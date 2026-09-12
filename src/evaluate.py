@@ -1,17 +1,24 @@
+
 import os
+import json
 
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+import matplotlib.pyplot as plt
+
 from sklearn.metrics import (
     accuracy_score,
     precision_recall_fscore_support,
-    confusion_matrix
+    confusion_matrix,
+    classification_report
 )
 
-from transformers import AutoTokenizer
-from transformers import AutoModelForSequenceClassification
+from transformers import (
+    AutoTokenizer,
+    AutoModelForSequenceClassification
+)
 
 from dataset import (
     load_imdb_dataset,
@@ -21,60 +28,45 @@ from dataset import (
 from config import (
     BATCH_SIZE,
     MODEL_SAVE_PATH,
-    NUM_LABELS
+    NUM_LABELS,
+    RESULTS_DIR
 )
 
 
 def main():
 
-    # --------------------------------------------------
-    # 1. Device
-    # --------------------------------------------------
-
     device = torch.device(
-        "cuda" if torch.cuda.is_available() else "cpu"
+        "cuda" if torch.cuda.is_available()
+        else "cpu"
     )
 
     print(f"Using device: {device}")
 
-    # --------------------------------------------------
-    # 2. Check model
-    # --------------------------------------------------
-
     if not os.path.exists(MODEL_SAVE_PATH):
-
         raise FileNotFoundError(
             f"Trained model not found at "
             f"{MODEL_SAVE_PATH}"
         )
 
-    # --------------------------------------------------
-    # 3. Load test dataset
-    # --------------------------------------------------
+    os.makedirs(
+        RESULTS_DIR,
+        exist_ok=True
+    )
 
     print("\nLoading IMDb test dataset...")
 
     dataset = load_imdb_dataset()
-
     test_dataset = dataset["test"]
 
     print(
         f"Test samples: {len(test_dataset)}"
     )
 
-    # --------------------------------------------------
-    # 4. Load tokenizer
-    # --------------------------------------------------
-
     print("\nLoading tokenizer...")
 
     tokenizer = AutoTokenizer.from_pretrained(
         MODEL_SAVE_PATH
     )
-
-    # --------------------------------------------------
-    # 5. Tokenize test dataset
-    # --------------------------------------------------
 
     print("\nTokenizing test dataset...")
 
@@ -83,17 +75,9 @@ def main():
         tokenizer
     )
 
-    # --------------------------------------------------
-    # 6. Remove raw text
-    # --------------------------------------------------
-
     test_dataset = test_dataset.remove_columns(
         ["text"]
     )
-
-    # --------------------------------------------------
-    # 7. Convert to PyTorch
-    # --------------------------------------------------
 
     test_dataset.set_format(
         type="torch",
@@ -104,19 +88,11 @@ def main():
         ]
     )
 
-    # --------------------------------------------------
-    # 8. DataLoader
-    # --------------------------------------------------
-
     test_loader = DataLoader(
         test_dataset,
         batch_size=BATCH_SIZE,
         shuffle=False
     )
-
-    # --------------------------------------------------
-    # 9. Load trained model
-    # --------------------------------------------------
 
     print("\nLoading trained model...")
 
@@ -126,12 +102,7 @@ def main():
     )
 
     model.to(device)
-
     model.eval()
-
-    # --------------------------------------------------
-    # 10. Inference
-    # --------------------------------------------------
 
     predictions = []
     true_labels = []
@@ -175,9 +146,7 @@ def main():
                 labels.cpu().numpy()
             )
 
-    # --------------------------------------------------
-    # 11. Calculate metrics
-    # --------------------------------------------------
+    # Metrics
 
     accuracy = accuracy_score(
         true_labels,
@@ -197,24 +166,147 @@ def main():
         predictions
     )
 
-    # --------------------------------------------------
-    # 12. Print results
-    # --------------------------------------------------
+    report = classification_report(
+        true_labels,
+        predictions,
+        target_names=[
+            "Negative",
+            "Positive"
+        ]
+    )
+
+    # Print results
 
     print("\n")
-    print("=" * 45)
+    print("=" * 50)
     print("IMDb Sentiment Analysis Evaluation")
-    print("=" * 45)
+    print("=" * 50)
 
     print(f"Accuracy:  {accuracy:.4f}")
     print(f"Precision: {precision:.4f}")
     print(f"Recall:    {recall:.4f}")
     print(f"F1 Score:  {f1:.4f}")
 
-    print("\nConfusion Matrix:")
+    print("\nClassification Report:")
+    print(report)
+
+    print("Confusion Matrix:")
     print(cm)
 
-    print("=" * 45)
+    print("=" * 50)
+
+    # Save metrics
+
+    metrics = {
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        "test_samples": len(test_dataset)
+    }
+
+    metrics_path = os.path.join(
+        RESULTS_DIR,
+        "metrics.json"
+    )
+
+    with open(
+        metrics_path,
+        "w"
+    ) as f:
+
+        json.dump(
+            metrics,
+            f,
+            indent=4
+        )
+
+    print(
+        f"\nMetrics saved to: {metrics_path}"
+    )
+
+    # Save classification report
+
+    report_path = os.path.join(
+        RESULTS_DIR,
+        "classification_report.txt"
+    )
+
+    with open(
+        report_path,
+        "w"
+    ) as f:
+
+        f.write(report)
+
+    print(
+        f"Classification report saved to: "
+        f"{report_path}"
+    )
+
+    # Create confusion matrix visualization
+
+    plt.figure(
+        figsize=(6, 5)
+    )
+
+    plt.imshow(
+        cm
+    )
+
+    plt.title(
+        "IMDb Sentiment Confusion Matrix"
+    )
+
+    plt.xlabel(
+        "Predicted Label"
+    )
+
+    plt.ylabel(
+        "True Label"
+    )
+
+    plt.xticks(
+        [0, 1],
+        ["Negative", "Positive"]
+    )
+
+    plt.yticks(
+        [0, 1],
+        ["Negative", "Positive"]
+    )
+
+    for i in range(2):
+
+        for j in range(2):
+
+            plt.text(
+                j,
+                i,
+                cm[i, j],
+                ha="center",
+                va="center"
+            )
+
+    plt.tight_layout()
+
+    confusion_path = os.path.join(
+        RESULTS_DIR,
+        "confusion_matrix.png"
+    )
+
+    plt.savefig(
+        confusion_path,
+        dpi=300,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    print(
+        f"Confusion matrix saved to: "
+        f"{confusion_path}"
+    )
 
 
 if __name__ == "__main__":
