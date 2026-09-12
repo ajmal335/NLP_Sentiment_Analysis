@@ -1,3 +1,4 @@
+
 from datasets import load_dataset
 from transformers import AutoTokenizer
 
@@ -12,7 +13,7 @@ def load_imdb_dataset():
         DatasetDict: IMDb train, test and unsupervised splits.
     """
 
-    return load_dataset("imdb")
+    return load_dataset("stanfordnlp/imdb")
 
 
 def get_tokenizer():

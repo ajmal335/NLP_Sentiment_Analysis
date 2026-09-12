@@ -6,4 +6,5 @@ pandas
 numpy
 matplotlib
 seaborn
-tqdm
+tqdmstreamlit
+streamlit
