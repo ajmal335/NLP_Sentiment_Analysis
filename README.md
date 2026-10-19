@@ -1,149 +1,76 @@
+# IMDb Sentiment Analysis with DistilBERT
 
-# 🎬 IMDb Sentiment Analysis with DistilBERT
+Fine-tune a transformer to classify English movie reviews as positive or negative, evaluate on a held-out test set, and explore predictions in Streamlit.
 
-A professional Natural Language Processing project that fine-tunes
-DistilBERT for binary sentiment classification on the IMDb movie
-review dataset.
+**Python · PyTorch · Hugging Face Transformers · IMDb · Streamlit**
 
-## 🚀 Project Overview
+[Portfolio](https://github.com/ajmal335) · [Recorded metrics](results/metrics.json) · [Classification report](results/classification_report.txt)
 
-This project demonstrates an end-to-end NLP machine learning pipeline:
+## Recorded results
 
-- Dataset loading
-- Train/validation/test splitting
-- Text tokenization
-- Transformer-based modeling
-- DistilBERT fine-tuning
-- GPU training with PyTorch
-- Model evaluation
-- Confusion matrix analysis
-- Sentiment prediction
-- Interactive Streamlit application
-
-## 🧠 Model
-
-**Base Model:** `distilbert-base-uncased`
-
-**Task:** Binary sentiment classification
-
-**Classes:**
-
-- `0` → Negative
-- `1` → Positive
-
-**Maximum sequence length:** 128
-
-**Batch size:** 16
-
-**Learning rate:** 2e-5
-
-**Epochs:** 2
-
-## 📊 Dataset
-
-IMDb Movie Reviews:
-
-- Training samples: 22,500
-- Validation samples: 2,500
-- Test samples: 25,000
-
-The original IMDb dataset also contains an unsupervised split,
-which is not used for supervised training.
-
-## 📈 Results
-
-| Metric | Score |
+| Metric | Value |
 |---|---:|
-| Accuracy | 87.73% |
+| Test accuracy | 87.73% |
 | Precision | 88.03% |
 | Recall | 87.34% |
-| F1 Score | 87.68% |
+| F1 | 87.68% |
+| Test reviews | 25,000 |
 
-### Confusion Matrix
+These numbers are taken from the committed evaluation artifacts. Training and evaluation were not rerun for this documentation update.
 
-| | Predicted Negative | Predicted Positive |
-|---|---:|---:|
-| Actual Negative | 11,015 | 1,485 |
-| Actual Positive | 1,583 | 10,917 |
+![Confusion matrix on IMDb test reviews](results/confusion_matrix.png)
 
-## 🏗️ Project Structure
+## Training approach
 
-```text
-NLP_Sentiment_Analysis/
-│
-├── data/
-│
-├── models/
-│
-├── notebooks/
-│
-├── results/
-│   ├── metrics.json
-│   ├── classification_report.txt
-│   ├── confusion_matrix.png
-│   ├── loss_curve.png
-│   ├── accuracy_curve.png
-│   └── training_history.json
-│
-├── src/
-│   ├── config.py
-│   ├── dataset.py
-│   ├── evaluate.py
-│   ├── model.py
-│   ├── plot_results.py
-│   ├── predict.py
-│   └── train.py
-│
-├── app.py
-├── .gitignore
-├── README.md
-└── requirements.txt
-⚙️ Technologies
-Python
-PyTorch
-Hugging Face Transformers
-Hugging Face Datasets
-DistilBERT
-Scikit-learn
-Matplotlib
-Streamlit
-Google Colab GPU
-🔄 Pipeline
-IMDb Review
-     ↓
-DistilBERT Tokenizer
-     ↓
-Input IDs + Attention Mask
-     ↓
-DistilBERT
-     ↓
-Classification Head
-     ↓
-Sentiment Prediction
-     ↓
-Negative / Positive
-💻 Running the Project
+- Base model: `distilbert-base-uncased`.
+- Labels: `0` negative; `1` positive.
+- Training/validation split: 22,500 / 2,500 reviews; separate 25,000-review test split.
+- Configuration: maximum sequence length 128, batch size 16, learning rate 2e-5, 2 epochs, seed 42.
+- Best validation checkpoint and tokenizer saved to `models/distilbert-imdb`.
 
-Install dependencies:
+See [configuration](src/config.py) and [training implementation](src/train.py) for executable details.
 
-pip install -r requirements.txt
+## Run locally
 
-Run prediction:
+Run from the repository root. GPU training is recommended; the scripts can select CPU when CUDA is unavailable.
 
-python src/predict.py
-
-Run evaluation:
-
+```bash
+git clone https://github.com/ajmal335/NLP_Sentiment_Analysis.git
+cd NLP_Sentiment_Analysis
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+python src/train.py
 python src/evaluate.py
+python src/predict.py
+```
 
-Run the Streamlit application:
+On Windows, activate with `.venv\Scripts\activate`.
 
-streamlit run app.py
-🏆 Final Performance
+**The trained checkpoint is not included in this repository.** Training downloads the base model and IMDb data, then writes the checkpoint locally. Prediction, evaluation, and the UI require that checkpoint first. Do not substitute an unfine-tuned base model and expect the recorded metrics.
 
-The fine-tuned DistilBERT model achieved:
+```bash
+python -m streamlit run app.py
+```
 
-87.73% accuracy on 25,000 unseen IMDb test reviews.
+## Repository guide
 
-This project demonstrates practical experience with transformer-based
-NLP, PyTorch training pipelines, model evaluation, and deployment.
+| Path | Responsibility |
+|---|---|
+| `src/config.py` | Model, training parameters, output paths |
+| `src/dataset.py` | Dataset loading and tokenization |
+| `src/model.py` | Model creation |
+| `src/train.py` | Training, validation, best-checkpoint selection |
+| `src/evaluate.py` | Evaluation |
+| `src/predict.py` | Interactive text prediction |
+| `src/plot_results.py` | Result visualization |
+| `app.py` | Streamlit interface |
+| `results/` | Committed metrics and plots |
+
+## Learning and limitations
+
+This project demonstrates transformer fine-tuning, validation-driven checkpointing, and classification evaluation. IMDb movie-review accuracy does not establish performance on customer support, Urdu text, sarcasm, or other domains. Softmax output is not calibrated confidence. Long text is truncated during tokenization. This is a portfolio application with a local UI; no public deployment is claimed.
+
+## Next steps
+
+Add error analysis by review length, test inference/training tokenization consistency, evaluate out-of-domain examples, and expose a cached prediction service.
